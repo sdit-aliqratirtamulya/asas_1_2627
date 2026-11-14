@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Rapor ASAS - SDIT AL-IQRA</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Orbitron & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (XLSX) untuk Import & Export Excel ASTS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        .loader-spinner {
+            border-top-color: #06b6d4;
+            animation: spinner 1s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .toast-animate { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* Custom Neon Glow Effects */
+        .glow-box { box-shadow: 0 0 20px rgba(6, 182, 212, 0.15); }
+        .glow-box-emerald { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+        .glow-text-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.6); }
+        .glow-text-emerald { text-shadow: 0 0 10px rgba(16, 185, 129, 0.6); }
+        
+        input:focus, select:focus {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4) !important;
+            border-color: #06b6d4 !important;
+        }
+
+        /* Menghilangkan panah atas-bawah pada input number agar tabel lebih rapi */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-black relative">
+
+    <!-- JAM DIGITAL POJOK KANAN ATAS -->
+    <div class="absolute top-4 right-4 md:top-6 md:right-6 z-40 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-cyan-500/30 glow-box text-right pointer-events-none">
+        <div id="clock-time" class="font-orbitron text-base md:text-lg font-bold text-cyan-400 tracking-wider glow-text-cyan">00:00:00</div>
+        <div id="clock-date" class="text-[10px] md:text-xs text-slate-400 font-medium">Senin, 1 Jan 2026</div>
+    </div>
+
+    <!-- OVERLAY LOADING -->
+    <div id="loading" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center hidden z-50">
+        <div class="bg-slate-900 p-6 rounded-2xl flex items-center gap-4 border border-cyan-500/40 glow-box">
+            <div class="loader-spinner ease-linear rounded-full border-4 border-t-4 border-slate-800 h-9 w-9"></div>
+            <span class="text-cyan-400 font-medium tracking-wide">Memproses data...</span>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFIKASI -->
+    <div id="toast-container" class="fixed top-5 left-5 z-50 flex flex-col gap-3 max-w-sm"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="flex-1 max-w-[95rem] w-full mx-auto p-4 md:p-6 pt-16 md:pt-20">
+
+        <!-- VIEW 1: FORM LOGIN -->
+        <div id="view-login" class="max-w-md mx-auto my-12 bg-slate-900/90 backdrop-blur-xl p-8 rounded-3xl border border-cyan-500/30 glow-box">
+            <div class="text-center mb-8">
+                <img id="login-logo" src="" alt="Logo SDIT AL-IQRA" class="w-24 h-24 mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+                <h2 class="text-2xl font-bold font-orbitron text-cyan-400 tracking-wider glow-text-cyan">e-RAPOR ASAS</h2>
+                <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">SDIT AL-IQRA Tirtamulya</p>
+            </div>
+
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-cyan-500/60"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="username" required autocomplete="username" placeholder="Masukkan username" class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-cyan-300 focus:outline-none transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">Password</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-cyan-500/60"><i class="fa-solid fa-lock"></i></span>
+                        <input type="password" id="password" required autocomplete="current-password" placeholder="••••••••" class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-cyan-300 focus:outline-none transition">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold py-3 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition duration-200 flex justify-center items-center gap-2 font-orbitron uppercase text-sm">
+                    <span>Masuk Sistem</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- VIEW 2: DASHBOARD UTAMA -->
+        <div id="view-dashboard" class="hidden space-y-6">
+            
+            <!-- Header Elegan -->
+            <div class="bg-slate-900/80 p-5 rounded-2xl border border-cyan-500/20 flex flex-col md:flex-row justify-between items-center gap-4 glow-box">
+                <div class="flex items-center gap-4">
+                    <img id="header-logo" src="" alt="Logo SDIT AL-IQRA" class="w-12 h-12 object-contain drop-shadow-[0_0_10px_rgba(6,182,212,0.5)] hidden sm:block">
+                    <div>
+                        <h1 id="dashboard-title" class="text-xl font-bold font-orbitron text-cyan-400 glow-text-cyan">PENGINPUTAN e-RAPOR ASAS</h1>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            SDIT AL-IQRA | <span id="user-role-label" class="text-slate-300 font-medium">Wali Kelas</span>: <span id="user-nama" class="font-semibold text-emerald-400"></span> <span id="header-rombel-wrap">| Rombel Aktif: <span id="user-rombel" class="font-bold text-cyan-300"></span></span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2.5">
+                    <!-- Tombol Unduh Leger Excel (Khusus Wali Kelas) -->
+                    <button id="btn-walas-leger" type="button" onclick="exportLegerExcel(activeRombel)" class="hidden px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 transition flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.35)]">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span>Unduh Leger Excel</span>
+                    </button>
+                    <button onclick="logout()" class="px-4 py-2 rounded-xl text-xs font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/50 transition flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span>Keluar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KONTEN KHUSUS ADMIN: DASHBOARD MONITORING PROGRES -->
+            <div id="admin-dashboard-section" class="hidden space-y-6">
+                <!-- Bar Aksi & Judul Monitoring -->
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-900/80 p-4 rounded-2xl border border-cyan-500/20">
+                    <div>
+                        <h2 class="text-base font-bold font-orbitron text-cyan-300 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-emerald-400"></i> MONITORING PROGRES PENGISIAN NILAI
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Rekapitulasi real-time kelengkapan nilai seluruh rombel dan mata pelajaran.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Unduh Leger Excel per Kelas untuk Admin -->
+                        <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+                            <span class="text-xs text-emerald-400 font-semibold">Leger Kelas:</span>
+                            <select id="admin-leger-rombel" class="bg-slate-900 border border-slate-700 text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-lg focus:outline-none">
+                                <option value="1A">1A</option><option value="1B">1B</option>
+                                <option value="2A">2A</option><option value="2B">2B</option>
+                                <option value="3A">3A</option><option value="3B">3B</option>
+                                <option value="4A">4A</option><option value="4B">4B</option>
+                                <option value="5A">5A</option><option value="5B">5B</option>
+                                <option value="6A">6A</option><option value="6B">6B</option>
+                            </select>
+                            <button type="button" onclick="exportLegerExcel(document.getElementById('admin-leger-rombel').value)" class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-excel"></i> Unduh Excel
+                            </button>
+                        </div>
+
+                        <button type="button" onclick="loadAdminDashboard()" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.35)]">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh Data
+                        </button>
+                    </div>
+                </div>
+                <button onclick="logout()" class="px-4 py-2 rounded-xl text-xs font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/50 transition flex items-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Keluar</span>
+                </button>
+            </div>
+
+            <!-- KONTEN KHUSUS ADMIN: DASHBOARD MONITORING PROGRES -->
+            <div id="admin-dashboard-section" class="hidden space-y-6">
+                <!-- Bar Aksi & Judul Monitoring -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/80 p-4 rounded-2xl border border-cyan-500/20">
+                    <div>
+                        <h2 class="text-base font-bold font-orbitron text-cyan-300 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-emerald-400"></i> MONITORING PROGRES PENGISIAN NILAI
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Rekapitulasi real-time kelengkapan nilai seluruh rombel dan mata pelajaran.</p>
+                    </div>
+                    <button type="button" onclick="loadAdminDashboard()" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition flex items-center gap-2 shadow-[0_0_15px_rgba(6,182,212,0.35)]">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh Data
+                    </button>
+                </div>
+
+                <!-- 4 Kartu Ringkasan Utama -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 glow-box">
+                        <div class="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
+                            <span>Progres Sekolah</span>
+                            <i class="fa-solid fa-gauge-high text-emerald-400 text-base"></i>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="stat-overall-pct" class="text-3xl font-extrabold font-orbitron text-emerald-400 glow-text-emerald">0%</span>
+                            <span class="text-xs text-slate-400">selesai</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-2 rounded-full mt-3 overflow-hidden border border-slate-800">
+                            <div id="stat-overall-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
+                            <span>Mapel Tuntas</span>
+                            <i class="fa-solid fa-book-open-reader text-cyan-400 text-base"></i>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="stat-mapel-done" class="text-3xl font-extrabold font-orbitron text-cyan-400 glow-text-cyan">0</span>
+                            <span class="text-xs text-slate-400">dari <span id="stat-mapel-total" class="text-slate-200 font-semibold">0</span> target</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2">Akumulasi mapel seluruh rombel aktif</p>
+                    </div>
+
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
+                            <span>Total Rombel</span>
+                            <i class="fa-solid fa-school text-amber-400 text-base"></i>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="stat-total-kelas" class="text-3xl font-extrabold font-orbitron text-amber-400">12</span>
+                            <span class="text-xs text-slate-400">kelas (1A – 6B)</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2">Termasuk pemantauan mapel Tahfidz</p>
+                    </div>
+
+                    <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between text-xs text-slate-400 uppercase font-semibold">
+                            <span>Total Siswa Terdaftar</span>
+                            <i class="fa-solid fa-users text-indigo-400 text-base"></i>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="stat-total-siswa" class="text-3xl font-extrabold font-orbitron text-indigo-400">0</span>
+                            <span class="text-xs text-slate-400">peserta didik</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2">Sumber data sheet Siswa</p>
+                    </div>
+                </div>
+
+                <!-- Grid 2 Kolom: Progres Per Kelas & Progres Per Mapel -->
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <!-- Kolom Kiri (2/3): Progres Wali Kelas per Rombel -->
+                    <div class="xl:col-span-2 bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+                        <div class="p-4 bg-slate-950/90 border-b border-slate-800 flex flex-wrap justify-between items-center gap-2">
+                            <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard-user"></i> Progres Per Kelas & Wali Kelas
+                            </h3>
+                            <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Tuntas</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Sebagian</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-700 inline-block"></span> Belum</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="bg-slate-950/60 border-b border-slate-800 text-[11px] text-slate-400 uppercase tracking-wider">
+                                        <th class="p-3.5 w-20 text-center">Kelas</th>
+                                        <th class="p-3.5">Wali Kelas</th>
+                                        <th class="p-3.5 text-center w-20">Siswa</th>
+                                        <th class="p-3.5 w-44">Progres Mapel</th>
+                                        <th class="p-3.5 text-center w-24">Detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-table-kelas" class="divide-y divide-slate-800/60"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Kolom Kanan (1/3): Progres Per Mata Pelajaran -->
+                    <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden flex flex-col">
+                        <div class="p-4 bg-slate-950/90 border-b border-slate-800">
+                            <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group"></i> Progres Per Mata Pelajaran
+                            </h3>
+                        </div>
+                        <div id="admin-list-mapel" class="p-4 space-y-3.5 overflow-y-auto max-h-[620px]"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KONTEN UTAMA: INPUT NILAI MAPEL (WALAS & GURU TAHFIZH) -->
+            <div id="tab-content-nilai" class="space-y-6">
+                <!-- Filter Kelas (Khusus Tahfizh), Mapel & Toolbar Excel ASTS -->
+                <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div class="flex flex-wrap gap-4 items-center">
+                            <!-- Dropdown Pilih Kelas (Muncul otomatis jika Role = tahfizh) -->
+                            <div id="container-select-kelas" class="hidden flex items-center gap-2.5">
+                                <label class="text-sm font-semibold text-emerald-400">Pilih Kelas:</label>
+                                <select id="select-kelas" onchange="handleChangeKelas()" class="bg-slate-950 border border-emerald-500/40 text-emerald-300 px-3.5 py-2 rounded-xl text-sm font-bold focus:outline-none transition">
+                                </select>
+                            </div>
+
+                            <!-- Dropdown Pilih Mata Pelajaran -->
+                            <div class="flex items-center gap-2.5">
+                                <label class="text-sm font-semibold text-cyan-400">Mata Pelajaran:</label>
+                                <select id="select-mapel" onchange="loadNilai()" class="bg-slate-950 border border-slate-800 text-cyan-300 px-4 py-2 rounded-xl text-sm font-medium focus:outline-none transition">
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Toolbar Import/Export Excel ASTS -->
+                        <div class="flex flex-wrap items-center gap-2.5 bg-slate-950 p-2.5 rounded-xl border border-amber-500/30">
+                            <span class="text-xs font-bold text-amber-400 px-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-excel"></i> Nilai ASTS:
+                            </span>
+                            <button type="button" onclick="downloadTemplateASTS()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700 transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-download"></i> Template Excel
+                            </button>
+                            <label class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 transition cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.3)]">
+                                <i class="fa-solid fa-upload"></i> Upload Excel ASTS
+                                <input type="file" id="upload-asts-excel" accept=".xlsx, .xls" onchange="handleUploadASTS(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Info Konfigurasi Kelas Otomatis (Terkunci Sesuai Jenjang Kelas) -->
+                    <div class="bg-slate-950 px-4 py-2.5 rounded-xl border border-cyan-500/20 flex flex-wrap gap-x-6 gap-y-2 items-center text-xs">
+                        <span class="font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-cyan-400"></i> Ketentuan Kelas <span id="info-rombel-cfg" class="text-white"></span>:
+                        </span>
+                        <div class="text-slate-400">
+                            Bobot Maks ASAS: 
+                            <span class="text-cyan-300 font-semibold">PG (<span id="info-max-pg">20</span>)</span> • 
+                            <span class="text-cyan-300 font-semibold">Isian (<span id="info-max-isian">10</span>)</span> • 
+                            <span class="text-cyan-300 font-semibold">Essay (<span id="info-max-essay">15</span>)</span> 
+                            <span class="text-slate-500 ml-1">(Total: <span id="info-total-max" class="text-emerald-400 font-bold">45</span>)</span>
+                        </div>
+                        <div class="text-slate-400 border-l pl-4 border-slate-800">
+                            Rentang Katrol (Nilai Akhir ASAS): <span id="info-nb-min" class="text-amber-300 font-bold">77</span> – <span id="info-nb-max" class="text-amber-300 font-bold">90</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Tabel Nilai -->
+                <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+                    <form id="form-nilai" onsubmit="handleSaveNilai(event)">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead>
+                                    <tr class="bg-slate-950/90 border-b border-slate-800 text-[11px] uppercase tracking-wider">
+                                        <th rowspan="2" class="p-3 w-12 text-center text-slate-400 border-r border-slate-800">No</th>
+                                        <th rowspan="2" class="p-3 w-28 text-slate-400 border-r border-slate-800">NISN</th>
+                                        <th rowspan="2" class="p-3 min-w-[200px] text-slate-300 border-r border-slate-800">Nama Siswa</th>
+                                        <th rowspan="2" class="p-3 text-center w-24 bg-indigo-950/40 text-indigo-300 border-r border-slate-800">Nilai<br>Harian</th>
+                                        <th rowspan="2" class="p-3 text-center w-24 bg-amber-950/40 text-amber-300 border-r border-slate-800">Nilai<br>ASTS</th>
+                                        <th colspan="6" class="p-2 text-center bg-cyan-950/40 text-cyan-300 border-b border-r border-slate-800">Penilaian ASAS</th>
+                                        <th rowspan="2" class="p-3 text-center w-28 bg-emerald-950/50 text-emerald-300">Nilai<br>Rapor</th>
+                                    </tr>
+                                    <tr class="bg-slate-950/70 border-b border-slate-800 text-[10px] text-cyan-400 uppercase tracking-wider">
+                                        <th class="p-2 text-center w-20">PG</th>
+                                        <th class="p-2 text-center w-20">Isian</th>
+                                        <th class="p-2 text-center w-20">Essay</th>
+                                        <th class="p-2 text-center w-20 bg-slate-950 text-slate-300">Jml Skor</th>
+                                        <th class="p-2 text-center w-24 bg-cyan-950/40 text-cyan-300">Nilai ASAS</th>
+                                        <th class="p-2 text-center w-24 bg-sky-950/50 text-sky-300 border-r border-slate-800">Nilai Akhir</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-nilai" class="divide-y divide-slate-800/60"></tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <span class="text-xs text-slate-400">
+                                <i class="fa-solid fa-circle-info text-cyan-400 mr-1"></i> Nilai Akhir ASAS dikatrol otomatis berdasarkan sebaran nilai kelas.
+                            </span>
+                            <button type="submit" class="w-full sm:w-auto bg-emerald-500 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition flex justify-center items-center gap-2 text-sm font-orbitron uppercase">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Simpan Semua Nilai</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbyt60gxdqFm2zF0gHXHo3pQ24ODuiQ-F4LBWQZQMgXWEUzyPQGG1wSHokuASw-73bN7/exec";
+
+        // =========================================================================
+        // PENGATURAN LOGO SEKOLAH
+        // Cara pakai: Upload logo.png ke Google Drive -> Klik Bagikan (Siapa saja
+        // yang memiliki link) -> Salin ID file dari link Drive-nya, lalu tempel di bawah:
+        // Contoh link Drive: https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view
+        // Maka GOOGLE_DRIVE_LOGO_ID diisi: "1AbCdEfGhIjKlMnOpQrStUvWxYz"
+        // =========================================================================
+        const GOOGLE_DRIVE_LOGO_ID = "1HvHb5kJgvETiduQl6bZtsQvsb2acWzHa";
+
+        const DEFAULT_LOGO_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+                <defs>
+                    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#06b6d4"/>
+                        <stop offset="100%" stop-color="#10b981"/>
+                    </linearGradient>
+                </defs>
+                <polygon points="60,6 108,33 108,87 60,114 12,87 12,33" fill="#0f172a" stroke="url(#g)" stroke-width="5"/>
+                <text x="60" y="58" text-anchor="middle" fill="#22d3ee" font-family="Arial, sans-serif" font-weight="bold" font-size="18">SDIT</text>
+                <text x="60" y="78" text-anchor="middle" fill="#34d399" font-family="Arial, sans-serif" font-weight="bold" font-size="14">AL-IQRA</text>
+            </svg>
+        `);
+
+        function initLogo() {
+            const logoSrc = GOOGLE_DRIVE_LOGO_ID.trim()
+                ? `https://drive.google.com/thumbnail?id=${GOOGLE_DRIVE_LOGO_ID.trim()}&sz=w400`
+                : DEFAULT_LOGO_SVG;
+
+            ["login-logo", "header-logo"].forEach(id => {
+                const img = document.getElementById(id);
+                if (img) {
+                    img.onerror = () => { img.src = DEFAULT_LOGO_SVG; };
+                    img.src = logoSrc;
+                }
+            });
+        }
+        initLogo();
+
+        const DEFAULT_KELAS_CONFIG = {
+            1: { maxPg: 20, maxIsian: 10, maxEssay: 15, nbMin: 77, nbMax: 90 },
+            2: { maxPg: 20, maxIsian: 10, maxEssay: 15, nbMin: 77, nbMax: 91 },
+            3: { maxPg: 25, maxIsian: 10, maxEssay: 15, nbMin: 80, nbMax: 92 },
+            4: { maxPg: 25, maxIsian: 10, maxEssay: 15, nbMin: 85, nbMax: 93 },
+            5: { maxPg: 25, maxIsian: 10, maxEssay: 15, nbMin: 87, nbMax: 94 },
+            6: { maxPg: 25, maxIsian: 10, maxEssay: 15, nbMin: 89, nbMax: 96 }
+        };
+
+        function getLocalDefaultConfig(rombel) {
+            const match = String(rombel).match(/\d+/);
+            const tingkat = match ? parseInt(match[0], 10) : 1;
+            return DEFAULT_KELAS_CONFIG[tingkat] || DEFAULT_KELAS_CONFIG[1];
+        }
+
+        let currentSession = null;
+        let siswaData = [];
+        let activeRombel = "";
+        let currentConfig = DEFAULT_KELAS_CONFIG[1];
+
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock-time').innerText = `${hours}:${minutes}:${seconds}`;
+
+            const options = { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' };
+            document.getElementById('clock-date').innerText = now.toLocaleDateString('id-ID', options);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            const isSuccess = type === "success";
+            const bgColor = isSuccess ? "bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)]" : "bg-rose-600 text-white shadow-[0_0_20px_rgba(225,29,72,0.4)]";
+            const icon = isSuccess ? "fa-circle-check" : "fa-circle-xmark";
+            toast.className = `${bgColor} px-4 py-3 rounded-xl flex items-center gap-3 text-sm font-semibold toast-animate`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.transition = "opacity 0.4s ease";
+                setTimeout(() => toast.remove(), 400);
+            }, 3500);
+        }
+
+        function showLoading(show) {
+            document.getElementById("loading").classList.toggle("hidden", !show);
+        }
+
+        async function apiCall(data) {
+            showLoading(true);
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    mode: "cors",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(data),
+                    redirect: "follow"
+                });
+                const result = await response.json();
+                showLoading(false);
+                return result;
+            } catch (err) {
+                showLoading(false);
+                showToast("Terjadi kesalahan koneksi ke server!", "error");
+                console.error(err);
+                return null;
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const savedSession = localStorage.getItem("erapor_asas_session");
+            if (savedSession) {
+                try {
+                    currentSession = JSON.parse(savedSession);
+                    displayDashboard();
+                } catch (e) {
+                    localStorage.removeItem("erapor_asas_session");
+                }
+            }
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            const res = await apiCall({ action: "login", username, password });
+
+            if (res && res.success) {
+                currentSession = res.data;
+                localStorage.setItem("erapor_asas_session", JSON.stringify(currentSession));
+                showToast(`Selamat datang, ${currentSession.nama}!`);
+                displayDashboard();
+            } else if (res) {
+                showToast(res.message || "Login gagal!", "error");
+            }
+        }
+
+        function displayDashboard() {
+            activeRombel = currentSession.rombel;
+            const role = currentSession.role;
+
+            document.getElementById("view-login").classList.add("hidden");
+            document.getElementById("view-dashboard").classList.remove("hidden");
+
+            const adminSection = document.getElementById("admin-dashboard-section");
+            const inputNilaiSection = document.getElementById("tab-content-nilai");
+            const headerRombelWrap = document.getElementById("header-rombel-wrap");
+            const btnWalasLeger = document.getElementById("btn-walas-leger");
+
+            if (role === "admin") {
+                document.getElementById("dashboard-title").innerText = "DASHBOARD ADMIN e-RAPOR";
+                document.getElementById("user-role-label").innerText = "Administrator";
+                document.getElementById("user-nama").innerText = currentSession.nama;
+                headerRombelWrap.classList.add("hidden");
+                btnWalasLeger.classList.add("hidden");
+
+                adminSection.classList.remove("hidden");
+                inputNilaiSection.classList.add("hidden");
+                loadAdminDashboard();
+            } else {
+                const isTahfizh = role.startsWith("tahfizh");
+                const roleLabel = isTahfizh ? "Guru Mapel Tahfizh" : "Wali Kelas";
+                document.getElementById("dashboard-title").innerText = "PENGINPUTAN e-RAPOR ASAS";
+                document.getElementById("user-role-label").innerText = roleLabel;
+                document.getElementById("user-nama").innerText = currentSession.nama;
+                document.getElementById("user-rombel").innerText = activeRombel;
+                headerRombelWrap.classList.remove("hidden");
+
+                // Tombol Unduh Leger Excel tampil untuk Wali Kelas
+                btnWalasLeger.classList.toggle("hidden", isTahfizh);
+
+                adminSection.classList.add("hidden");
+                inputNilaiSection.classList.remove("hidden");
+                initDashboard();
+            }
+        }
+
+        async function loadAdminDashboard() {
+            const res = await apiCall({ action: "getAdminStats" });
+            if (!res || !res.success) return;
+
+            const { summary, kelasStats, mapelStats } = res;
+
+            // Update 4 kartu ringkasan
+            document.getElementById("stat-overall-pct").innerText = `${summary.overallPersentase}%`;
+            document.getElementById("stat-overall-bar").style.width = `${summary.overallPersentase}%`;
+            document.getElementById("stat-mapel-done").innerText = summary.totalMapelSelesai;
+            document.getElementById("stat-mapel-total").innerText = summary.totalMapelTarget;
+            document.getElementById("stat-total-kelas").innerText = summary.totalKelas;
+            document.getElementById("stat-total-siswa").innerText = summary.totalSiswa;
+
+            // Render Tabel Progres Kelas & Wali Kelas
+            const tbodyKelas = document.getElementById("admin-table-kelas");
+            tbodyKelas.innerHTML = "";
+
+            kelasStats.forEach((k, idx) => {
+                const barColor = k.persentase === 100 ? "bg-emerald-500" : (k.persentase > 0 ? "bg-amber-500" : "bg-slate-700");
+                const textColor = k.persentase === 100 ? "text-emerald-400" : (k.persentase > 0 ? "text-amber-400" : "text-slate-400");
+
+                const trMain = document.createElement("tr");
+                trMain.className = "hover:bg-slate-800/40 transition";
+                trMain.innerHTML = `
+                    <td class="p-3.5 text-center font-orbitron font-bold text-cyan-300">${k.rombel}</td>
+                    <td class="p-3.5 font-medium text-slate-200">${k.walas}</td>
+                    <td class="p-3.5 text-center text-slate-400 font-mono text-xs">${k.jumlahSiswa}</td>
+                    <td class="p-3.5">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">${k.selesaiCount}/${k.totalMapel} Mapel</span>
+                            <span class="font-bold ${textColor}">${k.persentase}%</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                            <div class="${barColor} h-full transition-all duration-300" style="width: ${k.persentase}%"></div>
+                        </div>
+                    </td>
+                    <td class="p-3.5 text-center">
+                        <button type="button" onclick="toggleDetailKelas(${idx})" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-cyan-300 hover:bg-slate-700 border border-slate-700 transition">
+                            Cek Mapel
+                        </button>
+                    </td>
+                `;
+                tbodyKelas.appendChild(trMain);
+
+                // Baris Detail Mapel (Collapsible)
+                const trDetail = document.createElement("tr");
+                trDetail.id = `detail-kelas-${idx}`;
+                trDetail.className = "hidden bg-slate-950/70";
+                
+                const badgesHtml = k.detailMapel.map(m => {
+                    let badgeStyle = "bg-slate-900 text-slate-400 border-slate-800";
+                    let icon = "fa-clock";
+                    if (m.status === "selesai") {
+                        badgeStyle = "bg-emerald-950/60 text-emerald-300 border-emerald-500/40";
+                        icon = "fa-circle-check";
+                    } else if (m.status === "sebagian") {
+                        badgeStyle = "bg-amber-950/60 text-amber-300 border-amber-500/40";
+                        icon = "fa-circle-half-stroke";
+                    }
+                    return `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] border ${badgeStyle}">
+                            <i class="fa-solid ${icon}"></i>
+                            <span>${m.mapel}</span>
+                            <span class="opacity-75 font-mono">(${m.terisi}/${m.target})</span>
+                        </span>
+                    `;
+                }).join("");
+
+                trDetail.innerHTML = `
+                    <td colspan="5" class="p-4 border-t border-slate-800/60">
+                        <div class="text-[11px] font-semibold text-slate-400 uppercase mb-2">Status Input Mata Pelajaran Kelas ${k.rombel}:</div>
+                        <div class="flex flex-wrap gap-2">${badgesHtml}</div>
+                    </td>
+                `;
+                tbodyKelas.appendChild(trDetail);
+            });
+
+            // Render Progres Per Mata Pelajaran
+            const listMapel = document.getElementById("admin-list-mapel");
+            listMapel.innerHTML = mapelStats.map(m => {
+                const barColor = m.persentase === 100 ? "bg-emerald-500" : (m.persentase > 0 ? "bg-cyan-500" : "bg-slate-700");
+                return `
+                    <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+                        <div class="flex justify-between items-center text-xs mb-1.5">
+                            <span class="font-semibold text-slate-200 truncate pr-2">${m.mapel}</span>
+                            <span class="text-slate-400 shrink-0 font-mono">${m.kelasSelesai}/${m.totalKelas} Kelas (${m.persentase}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                            <div class="${barColor} h-full transition-all duration-300" style="width: ${m.persentase}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function toggleDetailKelas(idx) {
+            const row = document.getElementById(`detail-kelas-${idx}`);
+            if (row) row.classList.toggle("hidden");
+        }
+
+        function logout() {
+            currentSession = null;
+            activeRombel = "";
+            localStorage.removeItem("erapor_asas_session");
+            document.getElementById("view-dashboard").classList.add("hidden");
+            document.getElementById("view-login").classList.remove("hidden");
+            document.getElementById("form-login").reset();
+            showToast("Anda telah keluar dari sistem.");
+        }
+
+        function applyKelasConfig(config) {
+            currentConfig = config ? config : getLocalDefaultConfig(activeRombel);
+            const totalMax = (Number(currentConfig.maxPg) || 0) + (Number(currentConfig.maxIsian) || 0) + (Number(currentConfig.maxEssay) || 0);
+            
+            document.getElementById("info-rombel-cfg").innerText = activeRombel;
+            document.getElementById("info-max-pg").innerText = currentConfig.maxPg;
+            document.getElementById("info-max-isian").innerText = currentConfig.maxIsian;
+            document.getElementById("info-max-essay").innerText = currentConfig.maxEssay;
+            document.getElementById("info-total-max").innerText = totalMax;
+            document.getElementById("info-nb-min").innerText = currentConfig.nbMin;
+            document.getElementById("info-nb-max").innerText = currentConfig.nbMax;
+        }
+
+        async function initDashboard() {
+            const res = await apiCall({ 
+                action: "getInitData", 
+                role: currentSession.role, 
+                rombel: activeRombel 
+            });
+
+            if (res && res.success) {
+                siswaData = res.siswa;
+                applyKelasConfig(res.config);
+
+                const kelasContainer = document.getElementById("container-select-kelas");
+                const kelasSelect = document.getElementById("select-kelas");
+                if (res.kelasList && res.kelasList.length > 1) {
+                    kelasContainer.classList.remove("hidden");
+                    kelasSelect.innerHTML = res.kelasList.map(k => `<option value="${k}" ${k === activeRombel ? 'selected' : ''}>Kelas ${k}</option>`).join("");
+                } else {
+                    kelasContainer.classList.add("hidden");
+                }
+
+                const mapelSelect = document.getElementById("select-mapel");
+                mapelSelect.innerHTML = res.mapel.map(m => `<option value="${m}">${m}</option>`).join("");
+                loadNilai();
+            }
+        }
+
+        async function handleChangeKelas() {
+            activeRombel = document.getElementById("select-kelas").value;
+            document.getElementById("user-rombel").innerText = activeRombel;
+
+            const resSiswa = await apiCall({ action: "getSiswaByRombel", rombel: activeRombel });
+            if (resSiswa && resSiswa.success) {
+                siswaData = resSiswa.siswa;
+                applyKelasConfig(resSiswa.config);
+                loadNilai();
+            }
+        }
+
+        async function loadNilai() {
+            const mapel = document.getElementById("select-mapel").value;
+            if (!mapel) return;
+
+            const res = await apiCall({ action: "getNilai", rombel: activeRombel, mapel });
+            const scores = (res && res.success) ? res.nilai : {};
+            renderTableNilai(scores);
+        }
+
+        function renderTableNilai(scores) {
+            const tbody = document.getElementById("table-body-nilai");
+            tbody.innerHTML = "";
+
+            if (!siswaData || siswaData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-500">Belum ada data siswa di rombel ${activeRombel}.</td></tr>`;
+                return;
+            }
+
+            siswaData.forEach((siswa, index) => {
+                const s = scores[siswa.id] || { harian: 0, asts: 0, pg: 0, isian: 0, essay: 0 };
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-800/40 transition";
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center text-slate-500 font-medium border-r border-slate-800/60">${index + 1}</td>
+                    <td class="p-2.5 font-mono text-xs text-slate-400 border-r border-slate-800/60">${siswa.nisn}</td>
+                    <td class="p-2.5 font-semibold text-slate-200 border-r border-slate-800/60">${siswa.nama}</td>
+                    
+                    <!-- Nilai Harian -->
+                    <td class="p-2 text-center bg-indigo-950/10 border-r border-slate-800/60">
+                        <input type="number" step="0.01" min="0" max="100" data-id="${siswa.id}" data-nisn="${siswa.nisn}" class="score-input harian w-16 border border-indigo-500/30 rounded-lg text-center p-1.5 bg-slate-950 text-indigo-300 font-semibold" value="${s.harian}" oninput="recalculateAll()">
+                    </td>
+                    
+                    <!-- Nilai ASTS -->
+                    <td class="p-2 text-center bg-amber-950/10 border-r border-slate-800/60">
+                        <input type="number" step="0.01" min="0" max="100" data-id="${siswa.id}" data-nisn="${siswa.nisn}" class="score-input asts w-16 border border-amber-500/30 rounded-lg text-center p-1.5 bg-slate-950 text-amber-300 font-semibold" value="${s.asts}" oninput="recalculateAll()">
+                    </td>
+                    
+                    <!-- Skor Mentah ASAS -->
+                    <td class="p-2 text-center">
+                        <input type="number" step="0.01" min="0" max="${currentConfig.maxPg}" class="score-input pg w-14 border border-slate-800 rounded-lg text-center p-1.5 bg-slate-950 text-cyan-300" value="${s.pg}" oninput="recalculateAll()">
+                    </td>
+                    <td class="p-2 text-center">
+                        <input type="number" step="0.01" min="0" max="${currentConfig.maxIsian}" class="score-input isian w-14 border border-slate-800 rounded-lg text-center p-1.5 bg-slate-950 text-cyan-300" value="${s.isian}" oninput="recalculateAll()">
+                    </td>
+                    <td class="p-2 text-center">
+                        <input type="number" step="0.01" min="0" max="${currentConfig.maxEssay}" class="score-input essay w-14 border border-slate-800 rounded-lg text-center p-1.5 bg-slate-950 text-cyan-300" value="${s.essay}" oninput="recalculateAll()">
+                    </td>
+                    
+                    <!-- Hasil Kalkulasi ASAS & Katrol -->
+                    <td class="p-2.5 text-center font-bold bg-slate-950 text-slate-300 jml-skor-cell">0</td>
+                    <td class="p-2.5 text-center font-bold bg-cyan-950/30 text-cyan-400 nilai-asas-cell">0</td>
+                    <td class="p-2.5 text-center font-extrabold bg-sky-950/40 text-sky-300 nilai-akhir-cell border-r border-slate-800/60">0</td>
+                    
+                    <!-- Nilai Rapor Akhir -->
+                    <td class="p-2.5 text-center font-extrabold bg-emerald-950/40 text-emerald-400 rapor-cell glow-text-emerald text-base">0</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            recalculateAll();
+        }
+
+        function recalculateAll() {
+            const rows = document.querySelectorAll("#table-body-nilai tr");
+            if (rows.length === 0) return;
+
+            const maxPg = Number(currentConfig.maxPg) || 0;
+            const maxIsian = Number(currentConfig.maxIsian) || 0;
+            const maxEssay = Number(currentConfig.maxEssay) || 0;
+            const maxTotal = (maxPg + maxIsian + maxEssay) || 1;
+
+            const nbMin = Number(currentConfig.nbMin) || 75;
+            const nbMax = Number(currentConfig.nbMax) || 90;
+
+            const rowDataList = [];
+
+            // Tahap 1: Hitung Jumlah Skor dan Nilai ASAS murni per siswa
+            rows.forEach(tr => {
+                const harianInput = tr.querySelector(".harian");
+                if (!harianInput) return;
+
+                const harian = parseFloat(harianInput.value) || 0;
+                const asts = parseFloat(tr.querySelector(".asts").value) || 0;
+                const pg = parseFloat(tr.querySelector(".pg").value) || 0;
+                const isian = parseFloat(tr.querySelector(".isian").value) || 0;
+                const essay = parseFloat(tr.querySelector(".essay").value) || 0;
+
+                const jumlahSkor = pg + isian + essay;
+                const nilaiAsas = (jumlahSkor / maxTotal) * 100;
+
+                tr.querySelector(".jml-skor-cell").innerText = Number.isInteger(jumlahSkor) ? jumlahSkor : jumlahSkor.toFixed(1);
+                tr.querySelector(".nilai-asas-cell").innerText = nilaiAsas.toFixed(1);
+
+                rowDataList.push({ tr, harian, asts, nilaiAsas });
+            });
+
+            if (rowDataList.length === 0) return;
+
+            // Tahap 2: Cari Nilai ASAS Terendah & Tertinggi di kelas
+            const listNilaiAsas = rowDataList.map(item => item.nilaiAsas);
+            const nilaiTerendah = Math.min(...listNilaiAsas);
+            const nilaiTertinggi = Math.max(...listNilaiAsas);
+
+            // Tahap 3: Hitung Nilai Akhir ASAS (Katrol) & Nilai Rapor
+            rowDataList.forEach(item => {
+                let nilaiAkhirAsas = nbMin;
+
+                if (nilaiTertinggi !== nilaiTerendah) {
+                    nilaiAkhirAsas = nbMin + ((item.nilaiAsas - nilaiTerendah) / (nilaiTertinggi - nilaiTerendah)) * (nbMax - nbMin);
+                }
+
+                // Nilai Rapor = Rata-rata biasa dari (Harian + ASTS + Nilai Akhir ASAS) dibulatkan
+                const nilaiRapor = Math.round((item.harian + item.asts + nilaiAkhirAsas) / 3);
+
+                item.tr.querySelector(".nilai-akhir-cell").innerText = nilaiAkhirAsas.toFixed(1);
+                item.tr.querySelector(".rapor-cell").innerText = nilaiRapor;
+            });
+        }
+
+        function downloadTemplateASTS() {
+            if (!siswaData || siswaData.length === 0) {
+                showToast("Data siswa kosong, tidak dapat membuat template!", "error");
+                return;
+            }
+
+            const mapel = document.getElementById("select-mapel").value;
+            const rows = document.querySelectorAll("#table-body-nilai tr");
+            const currentAstsMap = {};
+            rows.forEach(tr => {
+                const inputAsts = tr.querySelector(".asts");
+                if (inputAsts) {
+                    currentAstsMap[inputAsts.getAttribute("data-id")] = parseFloat(inputAsts.value) || 0;
+                }
+            });
+
+            const excelData = siswaData.map((s, idx) => ({
+                "No": idx + 1,
+                "NISN": s.nisn,
+                "Nama_Siswa": s.nama,
+                "Nilai_ASTS": currentAstsMap[s.id] || 0
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            worksheet['!cols'] = [{ wch: 5 }, { wch: 15 }, { wch: 35 }, { wch: 15 }];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Template_ASTS");
+
+            const safeMapel = mapel.replace(/[^a-zA-Z0-9]/g, "_");
+            XLSX.writeFile(workbook, `Template_ASTS_${activeRombel}_${safeMapel}.xlsx`);
+            showToast("Template Excel ASTS berhasil diunduh!");
+        }
+
+        function handleUploadASTS(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) {
+                        showToast("File Excel kosong!", "error");
+                        return;
+                    }
+
+                    const astsByNisn = {};
+                    const astsByNama = {};
+
+                    jsonData.forEach(row => {
+                        const nilaiKey = Object.keys(row).find(k => k.toLowerCase().includes("asts") || k.toLowerCase().includes("nilai"));
+                        const nilaiVal = nilaiKey ? parseFloat(row[nilaiKey]) : NaN;
+
+                        if (!isNaN(nilaiVal)) {
+                            if (row.NISN !== undefined && row.NISN !== null) {
+                                astsByNisn[String(row.NISN).trim()] = nilaiVal;
+                            }
+                            const namaKey = Object.keys(row).find(k => k.toLowerCase().includes("nama"));
+                            if (namaKey && row[namaKey]) {
+                                astsByNama[String(row[namaKey]).trim().toLowerCase()] = nilaiVal;
+                            }
+                        }
+                    });
+
+                    let updatedCount = 0;
+                    document.querySelectorAll("#table-body-nilai tr").forEach(tr => {
+                        const inputAsts = tr.querySelector(".asts");
+                        if (!inputAsts) return;
+
+                        const nisn = String(inputAsts.getAttribute("data-nisn")).trim();
+                        const namaSiswa = tr.children[2].innerText.trim().toLowerCase();
+
+                        if (astsByNisn[nisn] !== undefined) {
+                            inputAsts.value = astsByNisn[nisn];
+                            updatedCount++;
+                        } else if (astsByNama[namaSiswa] !== undefined) {
+                            inputAsts.value = astsByNama[namaSiswa];
+                            updatedCount++;
+                        }
+                    });
+
+                    recalculateAll();
+                    showToast(`Berhasil mengimpor ${updatedCount} nilai ASTS! Jangan lupa klik Simpan.`);
+                } catch (err) {
+                    console.error(err);
+                    showToast("Format file Excel tidak sesuai template!", "error");
+                } finally {
+                    event.target.value = "";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function handleSaveNilai(e) {
+            e.preventDefault();
+            const mapel = document.getElementById("select-mapel").value;
+            const payloadScores = [];
+
+            document.querySelectorAll("#table-body-nilai tr").forEach(tr => {
+                const harianInput = tr.querySelector(".harian");
+                if (harianInput) {
+                    payloadScores.push({
+                        idSiswa: harianInput.getAttribute("data-id"),
+                        harian: harianInput.value,
+                        asts: tr.querySelector(".asts").value,
+                        pg: tr.querySelector(".pg").value,
+                        isian: tr.querySelector(".isian").value,
+                        essay: tr.querySelector(".essay").value,
+                        jumlahSkor: tr.querySelector(".jml-skor-cell").innerText,
+                        nilaiAsas: tr.querySelector(".nilai-asas-cell").innerText,
+                        nilaiAkhirAsas: tr.querySelector(".nilai-akhir-cell").innerText,
+                        nilaiRapor: tr.querySelector(".rapor-cell").innerText
+                    });
+                }
+            });
+
+            const res = await apiCall({ 
+                action: "saveNilai", 
+                rombel: activeRombel, 
+                mapel: mapel, 
+                scores: payloadScores 
+            });
+
+            if (res && res.success) {
+                showToast(res.message);
+            } else if (res) {
+                showToast(res.message || "Gagal menyimpan nilai!", "error");
+            }
+        }
+
+        // EKSPOR LEGER NILAI RAPOR KE EXCEL (.XLSX) TANPA PERINGKAT
+        async function exportLegerExcel(rombel) {
+            if (!rombel) return;
+            const res = await apiCall({ action: "getLegerData", rombel: rombel });
+            if (!res || !res.success) {
+                showToast(res?.message || "Gagal mengambil data leger!", "error");
+                return;
+            }
+
+            if (!res.rows || res.rows.length === 0) {
+                showToast(`Belum ada data siswa di kelas ${rombel}!`, "error");
+                return;
+            }
+
+            const headerJudul = [
+                ["LEGER NILAI RAPOR ASAS - SDIT AL-IQRA TIRTAMULYA"],
+                [`Kelas / Rombel : ${res.rombel}   |   Wali Kelas : ${res.walas}`],
+                []
+            ];
+
+            const tableHeaders = ["No", "NISN", "Nama Siswa", ...res.mapelList, "Jumlah", "Rata-Rata"];
+            const tableRows = res.rows.map(r => [
+                r.no,
+                r.nisn,
+                r.nama,
+                ...res.mapelList.map(m => r.scores[m] ?? 0),
+                r.jumlah,
+                r.rataRata
+            ]);
+
+            const sheetData = [...headerJudul, tableHeaders, ...tableRows];
+            const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+            // Atur lebar kolom otomatis agar rapi saat dibuka di Excel
+            worksheet["!cols"] = [
+                { wch: 5 },
+                { wch: 15 },
+                { wch: 32 },
+                ...res.mapelList.map(m => ({ wch: Math.max(12, Math.min(m.length + 2, 22)) })),
+                { wch: 10 },
+                { wch: 11 }
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Leger_${res.rombel}`);
+            XLSX.writeFile(workbook, `Leger_Rapor_ASAS_Kelas_${res.rombel}.xlsx`);
+            showToast(`Leger Excel Kelas ${res.rombel} berhasil diunduh!`);
+        }
+    </script>
+</body>
+</html>
